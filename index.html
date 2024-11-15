@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Multi STL Viewer</title>
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      font-family: Arial, sans-serif;
+    }
+    #file-list {
+      display: flex;
+      flex-direction: column;
+      margin: 10px;
+    }
+    #file-list button {
+      margin: 5px 0;
+      padding: 10px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    #viewer-container {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #e0e0e0;
+    }
+    canvas {
+      display: block;
+      max-width: 100%;
+      max-height: 100%;
+    }
+  </style>
+</head>
+<body>
+  <input type="file" id="file-input" accept=".stl" multiple>
+  <div id="file-list"></div>
+  <div id="viewer-container"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r152/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three/examples/js/loaders/STLLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three/examples/js/controls/OrbitControls.js"></script>
+  <script>
+    const fileInput = document.getElementById('file-input');
+    const fileList = document.getElementById('file-list');
+    const viewerContainer = document.getElementById('viewer-container');
+
+    let scene, camera, renderer, controls;
+
+    function initViewer() {
+      // Initialize Three.js scene
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(viewerContainer.offsetWidth, viewerContainer.offsetHeight);
+      viewerContainer.innerHTML = ''; // Clear existing canvas
+      viewerContainer.appendChild(renderer.domElement);
+
+      // Add lighting
+      const ambientLight = new THREE.AmbientLight(0x404040, 2);
+      scene.add(ambientLight);
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+      directionalLight.position.set(5, 10, 7.5).normalize();
+      scene.add(directionalLight);
+
+      // Set camera position
+      camera.position.z = 10;
+
+      // Add orbit controls
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+      // Animate the scene
+      function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+      }
+      animate();
+
+      // Handle window resizing
+      window.addEventListener('resize', () => {
+        camera.aspect = viewerContainer.offsetWidth / viewerContainer.offsetHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(viewerContainer.offsetWidth, viewerContainer.offsetHeight);
+      });
+    }
+
+    function loadSTL(file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const loader = new THREE.STLLoader();
+        const geometry = loader.parse(event.target.result);
+
+        // Clear existing scene
+        while (scene.children.length > 0) {
+          scene.remove(scene.children[0]);
+        }
+
+        // Add STL model
+        const material = new THREE.MeshPhongMaterial({ color: 0x0077ff });
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.rotation.x = -Math.PI / 2; // Correct STL orientation
+        scene.add(mesh);
+        controls.reset();
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    fileInput.addEventListener('change', (event) => {
+      const files = Array.from(event.target.files);
+
+      // Clear the file list
+      fileList.innerHTML = '';
+
+      files.forEach((file, index) => {
+        const button = document.createElement('button');
+        button.textContent = file.name;
+        button.addEventListener('click', () => {
+          loadSTL(file);
+        });
+        fileList.appendChild(button);
+      });
+    });
+
+    // Initialize viewer
+    initViewer();
+  </script>
+</body>
+</html>
